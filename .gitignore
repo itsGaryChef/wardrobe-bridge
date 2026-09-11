@@ -10,10 +10,11 @@ __pycache__/
 *.jpg
 *.jpeg
 *.zip
+!dist/
+!dist/wardrobe_bridge.zip
 wardrobe-library.json
 assets/
 previews/
 work/
 .vscode/
 .idea/
-

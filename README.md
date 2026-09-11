@@ -83,6 +83,14 @@ incoming-motion/
 
 Each release clip should record its title, category, FPS, frame range, loop behavior, root-motion behavior, source, author, license, and attribution requirements in the bundled manifest.
 
+To catalog a local collection without copying its files into Git:
+
+```powershell
+python scripts/catalog_motion_folder.py "D:\Photos\3D Files\Avatars\Animation Library" "work\animation-library-catalog.json"
+```
+
+Catalog entries remain marked `UNVERIFIED_LOCAL_ONLY` until their redistribution terms are documented.
+
 ## MCP connection
 
 Enable **Agent Connection** in Blender and copy the generated MCP configuration. The server uses standard input/output and a local bridge directory. Its Python process does not execute arbitrary Python supplied by an MCP client.

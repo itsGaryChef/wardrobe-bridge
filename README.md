@@ -42,6 +42,8 @@ Choose a folder under **Wardrobe → My master library**. This folder should liv
 
 The library stores `.blend` assets, packed image textures, previews, and `wardrobe-library.json`. Back up the entire chosen folder. Clothing fused into a body mesh must be separated once before it can become an independent wearable.
 
+Unrigged items may be saved as raw-placement assets. They can be browsed and loaded immediately, but must be positioned on a source avatar and given a body reference before automatic cross-avatar fitting.
+
 ## Fit clothing
 
 1. Select a library item and click **Use as Source**, or import a source avatar.

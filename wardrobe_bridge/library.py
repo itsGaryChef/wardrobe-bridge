@@ -81,8 +81,7 @@ def capture(objects, name, kind='WEARABLE', source_body=None, category=None, sou
         raise ValueError('Select the wearables only; the source body is included separately.')
     if source_body and rigs and body_rig(source_body) not in rigs:
         raise ValueError('The source body must use the wearable rig.')
-    if kind == 'WEARABLE' and not rigs and not source_body:
-        raise ValueError('An unrigged wearable needs a source body reference.')
+    raw_placement = kind == 'WEARABLE' and not rigs and not source_body
     included = set(objects) | rigs
     if source_body:
         included.add(source_body)
@@ -113,6 +112,7 @@ def capture(objects, name, kind='WEARABLE', source_body=None, category=None, sou
            'bodies': [o.name for o in included if o.type == 'MESH' and (o == source_body or o.get('wb_role') == 'BODY')],
            'source_body': source_body.name if source_body else None, 'preview': None,
            'category': category, 'source_avatar': source_avatar,
+           'readiness': 'RAW_PLACEMENT' if raw_placement else 'READY',
            'hidden': [o.name for o in included if o.hide_render] if kind == 'AVATAR' else []}
     data['assets'].append(row)
     temp = root / ('index-' + key + '.tmp')

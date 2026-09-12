@@ -107,7 +107,8 @@ def use_loaded(key, destination):
             return {'collection':collection.name,'objects':[o.name for o in mapping.values()],'body':None,'warning':'Choose the loaded avatar body as Target; this entry has no tagged body.'}
         bpy.context.scene.wb_workflow.target = body
     else: populate(mapping.values(), body)
-    return {'collection': collection.name, 'objects': [o.name for o in mapping.values()], 'body': body.name if body else None}
+    warning = 'Loaded raw wearable. Position it on a source avatar and choose that body reference before fitting.' if destination == 'SOURCE' and row.get('readiness') == 'RAW_PLACEMENT' else None
+    return {'collection': collection.name, 'objects': [o.name for o in mapping.values()], 'body': body.name if body else None, 'warning': warning}
 
 
 class WB_UL_inventory(bpy.types.UIList):

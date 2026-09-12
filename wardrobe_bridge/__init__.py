@@ -1,5 +1,5 @@
 bl_info = {
-    'name': 'Wardrobe Bridge', 'author': 'Gary / Codex', 'version': (0, 7, 0),
+    'name': 'Wardrobe Bridge', 'author': 'Gary / Codex', 'version': (0, 8, 0),
     'blender': (4, 2, 0), 'location': 'View3D > Sidebar > Wardrobe',
     'description': 'Personal wearable library, automated fit previews, regional revisions, and agent MCP bridge',
     'category': 'Object',
@@ -313,12 +313,13 @@ class WB_OT_weights(bpy.types.Operator):
 
 
 class WB_PT_panel(bpy.types.Panel):
-    bl_label = 'Advanced / Legacy Tools'
+    bl_label = 'Manual Fitting Tools'
     bl_idname = 'WB_PT_panel'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = 'Wardrobe'
     bl_options = {'DEFAULT_CLOSED'}
+    bl_order = 90
 
     def draw(self, context):
         layout = self.layout

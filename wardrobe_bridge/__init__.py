@@ -1,5 +1,5 @@
 bl_info = {
-    'name': 'Wardrobe Bridge', 'author': 'Gary / Codex', 'version': (0, 8, 0),
+    'name': 'Wardrobe Bridge', 'author': 'Gary / Codex', 'version': (0, 9, 0),
     'blender': (4, 2, 0), 'location': 'View3D > Sidebar > Wardrobe',
     'description': 'Personal wearable library, automated fit previews, regional revisions, and agent MCP bridge',
     'category': 'Object',

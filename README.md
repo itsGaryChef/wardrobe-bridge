@@ -57,11 +57,13 @@ The source remains unchanged. Running GO again for the same source wearable and 
 ## Retarget an animation
 
 1. Open **Pose & Animation Retargeting**.
-2. Choose the armature containing the source animation.
-3. Choose the destination armature and source action.
-4. Click **Check Humanoid Mapping**.
-5. Choose the bake interval and whether to preserve scaled hips/root translation.
-6. Click **Retarget & Bake Action**.
+2. Set **My pose / animation library** to a folder containing FBX, BVH, or Blender motion files.
+3. Click **Scan Motion Folder**, search or browse the list, and select a pose or animation.
+4. Click **Load Selected Motion**. The imported source rig and action are selected automatically.
+5. Choose the destination armature.
+6. Click **Check Humanoid Mapping**.
+7. Choose the bake interval and whether to preserve scaled hips/root translation.
+8. Click **Retarget & Bake Action**.
 
 The add-on creates a new target action and preserves the source action. The mapping recognizes common VRM, VRoid, Mixamo, and Auto-Rig Pro humanoid names. Inspect feet, hips, shoulders, and hand orientation after baking.
 

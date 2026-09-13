@@ -21,8 +21,10 @@ def armature_only(self, obj):
 class WBPreferences(bpy.types.AddonPreferences):
     bl_idname=__package__
     library_root: StringProperty(name='My master library',subtype='DIR_PATH')
+    motion_library_root: StringProperty(name='My pose / animation library',subtype='DIR_PATH')
     def draw(self,context):
         self.layout.prop(self,'library_root')
+        self.layout.prop(self,'motion_library_root')
         self.layout.label(text='Personal library shared across projects. Save Preferences to retain it.')
 
 
@@ -37,6 +39,12 @@ class WBInventoryItem(bpy.types.PropertyGroup):
 class WBSourceItem(bpy.types.PropertyGroup):
     obj: PointerProperty(type=bpy.types.Object)
     enabled: BoolProperty(name='Fit this item')
+
+
+class WBMotionItem(bpy.types.PropertyGroup):
+    filepath: StringProperty()
+    group: StringProperty()
+    format: StringProperty()
 
 
 class WBWorkflow(bpy.types.PropertyGroup):
@@ -64,6 +72,10 @@ class WBWorkflow(bpy.types.PropertyGroup):
     motion_name: StringProperty(name='New action name')
     motion_step: IntProperty(name='Bake every', default=1, min=1, max=100)
     motion_root: BoolProperty(name='Retarget root motion', default=True)
+    motion_library_dir: StringProperty(name='Pose / animation folder', subtype='DIR_PATH')
+    motion_inventory: CollectionProperty(type=WBMotionItem)
+    motion_inventory_index: IntProperty(default=0)
+    motion_search: StringProperty(name='Search motions')
     region: EnumProperty(name='Region', items=[(r, r.title(), '') for r in workflow.REGIONS])
     side: EnumProperty(name='Side', items=[('BOTH','Both',''),('LEFT','Left',''),('RIGHT','Right','')])
     move: FloatVectorProperty(name='Move XYZ', size=3, subtype='TRANSLATION', min=-.5, max=.5)
@@ -126,6 +138,70 @@ class WB_UL_inventory(bpy.types.UIList):
             visible = search in text and source in item.source_avatar.casefold() and (s.category_filter == 'ALL' or item.category == s.category_filter)
             flags.append(self.bitflag_filter_item if visible else 0)
         return flags, []
+
+
+class WB_UL_motion_inventory(bpy.types.UIList):
+    def draw_item(self, context, layout, data, item, icon, active_data, active_propname, index):
+        row=layout.row(align=True);row.label(text=item.name,icon='POSE_HLT' if item.group.casefold().startswith('pose') else 'ACTION')
+        row.label(text=item.group)
+    def filter_items(self, context, data, propname):
+        search=context.scene.wb_workflow.motion_search.casefold()
+        flags=[self.bitflag_filter_item if search in f'{item.name} {item.group} {item.format}'.casefold() else 0 for item in getattr(data,propname)]
+        return flags,[]
+
+
+def refresh_motions(settings):
+    prefs=library.preferences();value=prefs.motion_library_root if prefs and prefs.motion_library_root else settings.motion_library_dir
+    root=pathlib.Path(bpy.path.abspath(value)).resolve()
+    if not root.is_dir(): raise ValueError('Choose an existing pose / animation folder.')
+    settings.motion_inventory.clear()
+    for path in sorted((p for p in root.rglob('*') if p.is_file() and p.suffix.casefold() in {'.fbx','.bvh','.blend'}),key=lambda p:str(p).casefold()):
+        item=settings.motion_inventory.add();item.name=path.stem;item.filepath=str(path);item.format=path.suffix[1:].upper()
+        relative=path.relative_to(root);item.group=relative.parts[0] if len(relative.parts)>1 else item.format
+    settings.motion_inventory_index=min(settings.motion_inventory_index,max(0,len(settings.motion_inventory)-1))
+    return len(settings.motion_inventory)
+
+
+def load_motion_file(settings, filepath):
+    path=pathlib.Path(filepath)
+    if not path.is_file(): raise ValueError('The selected motion file is missing.')
+    before_objects=set(bpy.data.objects);before_actions=set(bpy.data.actions)
+    suffix=path.suffix.casefold()
+    if suffix=='.fbx': bpy.ops.import_scene.fbx(filepath=str(path),use_anim=True)
+    elif suffix=='.bvh': bpy.ops.import_anim.bvh(filepath=str(path),update_scene_fps=True)
+    elif suffix=='.blend':
+        with bpy.data.libraries.load(str(path),link=False) as (src,dst): dst.actions=src.actions;dst.objects=list(src.objects)
+        for obj in dst.objects:
+            if obj: bpy.context.scene.collection.objects.link(obj)
+    else: raise ValueError('Choose an FBX, BVH, or Blender motion file.')
+    imported_objects=set(bpy.data.objects)-before_objects;armatures=[obj for obj in imported_objects if obj.type=='ARMATURE']
+    actions=list(set(bpy.data.actions)-before_actions)
+    if not actions: actions=[obj.animation_data.action for obj in armatures if obj.animation_data and obj.animation_data.action]
+    actions=[action for action in actions if action]
+    if not armatures or not actions: raise ValueError('No animated armature and action were found in this file.')
+    source=max(armatures,key=lambda obj:len(obj.data.bones));action=max(actions,key=lambda value:value.frame_range[1]-value.frame_range[0])
+    settings.motion_source=source;settings.motion_action=action
+    bpy.context.scene.frame_start=int(action.frame_range[0]);bpy.context.scene.frame_end=int(action.frame_range[1]);bpy.context.scene.frame_set(int(action.frame_range[0]))
+    return source,action
+
+
+class WB_OT_motion_refresh(bpy.types.Operator):
+    bl_idname='wardrobe.motion_refresh';bl_label='Scan Motion Folder'
+    def execute(self,context):
+        try:
+            count=refresh_motions(context.scene.wb_workflow);context.scene.wb_workflow.status=f'Found {count} pose / animation files.';return {'FINISHED'}
+        except Exception as exc:self.report({'ERROR'},str(exc));return {'CANCELLED'}
+
+
+class WB_OT_motion_load(bpy.types.Operator):
+    bl_idname='wardrobe.motion_load';bl_label='Load Selected Motion';bl_options={'REGISTER','UNDO'}
+    def execute(self,context):
+        try:
+            s=context.scene.wb_workflow
+            if not s.motion_inventory: raise ValueError('Scan the motion folder and choose an item first.')
+            item=s.motion_inventory[min(s.motion_inventory_index,len(s.motion_inventory)-1)]
+            source,action=load_motion_file(s,item.filepath);s.status=f'Loaded {item.name}: {source.name} / {action.name}';return {'FINISHED'}
+        except Exception as exc:self.report({'ERROR'},str(exc));return {'CANCELLED'}
 
 
 class WB_OT_refresh(bpy.types.Operator):
@@ -383,13 +459,19 @@ class WB_PT_motion(bpy.types.Panel):
     bl_label='Pose & Animation Retargeting'; bl_idname='WB_PT_motion'; bl_space_type='VIEW_3D'; bl_region_type='UI'; bl_category='Wardrobe'
     def draw(self,context):
         layout=self.layout;s=context.scene.wb_workflow
+        box=layout.box();box.label(text='Motion Library')
+        prefs=library.preferences();box.prop(prefs,'motion_library_root') if prefs else box.prop(s,'motion_library_dir')
+        row=box.row(align=True);row.operator('wardrobe.motion_refresh',icon='FILE_REFRESH');row.prop(s,'motion_search',text='')
+        box.template_list('WB_UL_motion_inventory','',s,'motion_inventory',s,'motion_inventory_index',rows=5)
+        box.operator('wardrobe.motion_load',icon='IMPORT')
+        box.label(text='Loading selects its imported rig and action automatically.')
         layout.prop(s,'motion_source');layout.prop(s,'motion_target');layout.prop(s,'motion_action')
         layout.prop(s,'motion_name');row=layout.row(align=True);row.prop(s,'motion_step');row.prop(s,'motion_root')
         layout.operator('wardrobe.retarget_mapping',icon='BONE_DATA');layout.operator('wardrobe.retarget_action',icon='ACTION')
         layout.label(text='Creates a new target action; source animation is preserved.')
 
 
-classes=(WBPreferences,WBInventoryItem,WBSourceItem,WBWorkflow,WB_UL_inventory,WB_OT_refresh,WB_OT_load,WB_OT_source_selection,WB_OT_tag,WB_OT_import,WB_OT_save_asset,WB_OT_go,WB_OT_adjust,WB_OT_undo_fit,WB_OT_check,WB_OT_preview,WB_OT_thumbnail,WB_OT_bridge,WB_OT_agent_config,WB_OT_mapping,WB_OT_retarget,WB_PT_workflow,WB_PT_save,WB_PT_refine,WB_PT_motion,WB_PT_agent)
+classes=(WBPreferences,WBInventoryItem,WBSourceItem,WBMotionItem,WBWorkflow,WB_UL_inventory,WB_UL_motion_inventory,WB_OT_refresh,WB_OT_motion_refresh,WB_OT_motion_load,WB_OT_load,WB_OT_source_selection,WB_OT_tag,WB_OT_import,WB_OT_save_asset,WB_OT_go,WB_OT_adjust,WB_OT_undo_fit,WB_OT_check,WB_OT_preview,WB_OT_thumbnail,WB_OT_bridge,WB_OT_agent_config,WB_OT_mapping,WB_OT_retarget,WB_PT_workflow,WB_PT_save,WB_PT_refine,WB_PT_motion,WB_PT_agent)
 
 
 def register():

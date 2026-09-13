@@ -58,7 +58,7 @@ The source remains unchanged. Running GO again for the same source wearable and 
 
 1. Open **Pose & Animation Retargeting**.
 2. Set **My pose / animation library** to a folder containing FBX, BVH, or Blender motion files.
-3. Click **Scan Motion Folder**, search or browse the list, and select a pose or animation.
+3. Click **Scan Motion Folder**, choose Animations or Poses, and select a motion from the second dropdown.
 4. Click **Load Selected Motion**. The imported source rig and action are selected automatically.
 5. Choose the destination armature.
 6. Click **Check Humanoid Mapping**.
@@ -66,6 +66,8 @@ The source remains unchanged. Running GO again for the same source wearable and 
 8. Click **Retarget & Bake Action**.
 
 The add-on creates a new target action and preserves the source action. The mapping recognizes common VRM, VRoid, Mixamo, and Auto-Rig Pro humanoid names. Inspect feet, hips, shoulders, and hand orientation after baking.
+
+Loading an inventory asset switches the active 3D View to Material Preview so packed textures and material colors are visible. The loader reports empty material slots or unavailable texture images when it finds them.
 
 ## Bundled animation library
 

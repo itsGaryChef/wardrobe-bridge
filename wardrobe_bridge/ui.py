@@ -8,6 +8,7 @@ from . import library, workflow
 import bpy.utils.previews
 
 _previews = None
+_motion_enum_items = []
 
 
 def thumbnail_icon(item):
@@ -16,6 +17,26 @@ def thumbnail_icon(item):
 
 def armature_only(self, obj):
     return obj.type == 'ARMATURE'
+
+
+def show_material_preview(context):
+    screens={context.screen} if context.screen else set(bpy.data.screens)
+    for screen in screens:
+        for area in screen.areas:
+            if area.type=='VIEW_3D': area.spaces.active.shading.type='MATERIAL'
+
+
+def material_issues(objects):
+    issues=[]
+    for obj in objects:
+        if obj.type!='MESH': continue
+        if not obj.data.materials: issues.append(f'{obj.name}: no materials');continue
+        for material in obj.data.materials:
+            if not material: issues.append(f'{obj.name}: empty material slot');continue
+            if material.use_nodes:
+                for node in material.node_tree.nodes:
+                    if node.type=='TEX_IMAGE' and (not node.image or not node.image.size[0]):issues.append(f'{obj.name}: missing texture in {material.name}')
+    return issues
 
 
 class WBPreferences(bpy.types.AddonPreferences):
@@ -45,6 +66,15 @@ class WBMotionItem(bpy.types.PropertyGroup):
     filepath: StringProperty()
     group: StringProperty()
     format: StringProperty()
+    motion_type: StringProperty()
+
+
+def motion_choice_items(self, context):
+    global _motion_enum_items
+    search=self.motion_search.casefold();kind=self.motion_kind
+    _motion_enum_items=[(str(index),item.name,f'{item.motion_type.title()} • {item.filepath}','POSE_HLT' if item.motion_type=='POSE' else 'ACTION',index)
+        for index,item in enumerate(self.motion_inventory) if (kind=='ALL' or item.motion_type==kind) and search in f'{item.name} {item.group} {item.format}'.casefold()]
+    return _motion_enum_items or [('NONE','No matching motions','Scan the folder or change the filter','INFO',0)]
 
 
 class WBWorkflow(bpy.types.PropertyGroup):
@@ -76,6 +106,8 @@ class WBWorkflow(bpy.types.PropertyGroup):
     motion_inventory: CollectionProperty(type=WBMotionItem)
     motion_inventory_index: IntProperty(default=0)
     motion_search: StringProperty(name='Search motions')
+    motion_kind: EnumProperty(name='Motion type',items=[('ALL','Animations & Poses','Show every motion'),('ANIMATION','Animations','Multi-frame animation clips'),('POSE','Poses','Pose files from pose folders')])
+    motion_choice: EnumProperty(name='Motion',items=motion_choice_items)
     region: EnumProperty(name='Region', items=[(r, r.title(), '') for r in workflow.REGIONS])
     side: EnumProperty(name='Side', items=[('BOTH','Both',''),('LEFT','Left',''),('RIGHT','Right','')])
     move: FloatVectorProperty(name='Move XYZ', size=3, subtype='TRANSLATION', min=-.5, max=.5)
@@ -158,7 +190,9 @@ def refresh_motions(settings):
     for path in sorted((p for p in root.rglob('*') if p.is_file() and p.suffix.casefold() in {'.fbx','.bvh','.blend'}),key=lambda p:str(p).casefold()):
         item=settings.motion_inventory.add();item.name=path.stem;item.filepath=str(path);item.format=path.suffix[1:].upper()
         relative=path.relative_to(root);item.group=relative.parts[0] if len(relative.parts)>1 else item.format
+        item.motion_type='POSE' if any(part.casefold() in {'pose','poses'} for part in relative.parts[:-1]) else 'ANIMATION'
     settings.motion_inventory_index=min(settings.motion_inventory_index,max(0,len(settings.motion_inventory)-1))
+    settings.motion_choice='0' if settings.motion_inventory else 'NONE'
     return len(settings.motion_inventory)
 
 
@@ -199,7 +233,8 @@ class WB_OT_motion_load(bpy.types.Operator):
         try:
             s=context.scene.wb_workflow
             if not s.motion_inventory: raise ValueError('Scan the motion folder and choose an item first.')
-            item=s.motion_inventory[min(s.motion_inventory_index,len(s.motion_inventory)-1)]
+            if s.motion_choice=='NONE': raise ValueError('Choose a pose or animation first.')
+            item=s.motion_inventory[int(s.motion_choice)]
             source,action=load_motion_file(s,item.filepath);s.status=f'Loaded {item.name}: {source.name} / {action.name}';return {'FINISHED'}
         except Exception as exc:self.report({'ERROR'},str(exc));return {'CANCELLED'}
 
@@ -219,7 +254,10 @@ class WB_OT_load(bpy.types.Operator):
             s = context.scene.wb_workflow
             if not s.inventory: raise ValueError('Choose a library item first.')
             result = use_loaded(s.inventory[s.inventory_index].asset_id, self.destination)
-            s.status = result.get('warning') or ('Loaded ' + result['collection']); return {'FINISHED'}
+            loaded=context.scene.collection.children.get(result['collection']);issues=material_issues(loaded.all_objects if loaded else [])
+            if issues: self.report({'WARNING'},issues[0])
+            show_material_preview(context)
+            s.status = result.get('warning') or ('Loaded ' + result['collection'] + ('; '+issues[0] if issues else ' with materials visible')); return {'FINISHED'}
         except Exception as exc: self.report({'ERROR'}, str(exc)); return {'CANCELLED'}
 
 
@@ -462,10 +500,10 @@ class WB_PT_motion(bpy.types.Panel):
         box=layout.box();box.label(text='Motion Library')
         prefs=library.preferences();box.prop(prefs,'motion_library_root') if prefs else box.prop(s,'motion_library_dir')
         row=box.row(align=True);row.operator('wardrobe.motion_refresh',icon='FILE_REFRESH');row.prop(s,'motion_search',text='')
-        box.template_list('WB_UL_motion_inventory','',s,'motion_inventory',s,'motion_inventory_index',rows=5)
+        box.prop(s,'motion_kind');box.prop(s,'motion_choice')
         box.operator('wardrobe.motion_load',icon='IMPORT')
-        box.label(text='Loading selects its imported rig and action automatically.')
-        layout.prop(s,'motion_source');layout.prop(s,'motion_target');layout.prop(s,'motion_action')
+        loaded=layout.box();loaded.label(text='Loaded motion details');loaded.prop(s,'motion_source');loaded.prop(s,'motion_action')
+        layout.prop(s,'motion_target')
         layout.prop(s,'motion_name');row=layout.row(align=True);row.prop(s,'motion_step');row.prop(s,'motion_root')
         layout.operator('wardrobe.retarget_mapping',icon='BONE_DATA');layout.operator('wardrobe.retarget_action',icon='ACTION')
         layout.label(text='Creates a new target action; source animation is preserved.')

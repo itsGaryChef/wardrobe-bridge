@@ -1,4 +1,4 @@
-# Wardrobe Bridge 0.10 — wardrobe, pose, animation, and agent workflow
+# Wardrobe Bridge 0.11 — wardrobe, pose, animation, and agent workflow
 
 This version turns the fitting prototype into a reusable Blender workflow: choose a source from your inventory, check the wearable pieces, choose a target body, and press **GO — Fit Outfit**. It includes a local MCP server for agent-driven inspection and revisions.
 

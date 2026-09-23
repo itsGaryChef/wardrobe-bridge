@@ -1,0 +1,6 @@
+Quaternius Universal Animation Library — standard free collection
+Source example: https://defold.com/examples/animation/3d_animations/
+Defold source: https://github.com/defold/examples/tree/master/animation/3d_animations
+Original asset: https://quaternius.itch.io/universal-animation-library
+License: CC0 1.0 (Defold examples repository LICENSE)
+Converted by Wardrobe Bridge into one Blender file per action for local motion-library browsing.

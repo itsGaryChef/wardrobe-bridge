@@ -71,7 +71,7 @@ Loading an inventory asset switches the active 3D View to Material Preview so pa
 
 ## Bundled animation library
 
-Redistributable animation clips will live under `wardrobe_bridge/motions/`. The manifest is intentionally empty until properly licensed FBX files are supplied and converted. Do not commit an animation unless its license permits redistribution in this add-on.
+The add-on includes 45 CC0 clips from the Quaternius Universal Animation Library through Defold's 3D Animations example. Each clip is packaged as a separate Blender action so it appears directly in the motion dropdown. The bundled manifest records source, license, frame range, loop hints, and root-motion naming. Personal FBX, BVH, and Blender motion folders remain external and are combined with the bundled collection when scanned; matching personal clips take precedence.
 
 Source FBX files should be organized by category before processing:
 

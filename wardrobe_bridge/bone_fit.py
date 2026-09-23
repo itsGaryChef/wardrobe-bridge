@@ -5,6 +5,10 @@ from mathutils import Vector, Matrix
 
 def canonical(name):
     spaced = name.lower().strip()
+    ual={'pelvis':'hips','spine_01':'spine','spine_02':'chest','spine_03':'chest','neck_01':'neck','head':'head'}
+    for side in ('l','r'):
+        for part,key in [('clavicle','shoulder'),('upperarm','upperarm'),('lowerarm','lowerarm'),('hand','hand'),('thigh','upperleg'),('calf','lowerleg'),('foot','foot'),('ball','toes')]:ual[f'{part}_{side}']=key+side
+    if spaced in ual:return ual[spaced]
     for side, suffix in [('left', 'l'), ('right', 'r')]:
         for part,key in [('leg','upperleg'),('knee','lowerleg'),('ankle','foot'),('toe','toes'),('arm','upperarm'),('elbow','lowerarm'),('wrist','hand'),('shoulder','shoulder')]:
             if spaced == side+' '+part:return key+suffix

@@ -1,4 +1,4 @@
-# Wardrobe Bridge 0.11 — wardrobe, pose, animation, and agent workflow
+# Wardrobe Bridge 0.12 — wardrobe, pose, animation, and agent workflow
 
 This version turns the fitting prototype into a reusable Blender workflow: choose a source from your inventory, check the wearable pieces, choose a target body, and press **GO — Fit Outfit**. It includes a local MCP server for agent-driven inspection and revisions.
 
@@ -55,6 +55,8 @@ Use the region, side, move, expansion, and smoothing controls to refine a fit. E
 Open **Pose & Animation Retargeting** in the Wardrobe sidebar. Set **My pose / animation library** to a folder containing FBX, BVH, or Blender files and click **Scan Motion Folder**. Choose Animations or Poses, then choose a motion from the second dropdown and click **Load Selected Motion**; its imported armature and action are selected automatically. Then choose the destination armature. **Check Humanoid Mapping** reports whether the recognized VRM/Mixamo-style map is complete enough to bake. **Retarget & Bake Action** creates a new action on the target and leaves the source action unchanged.
 
 The first version maps the standard humanoid torso, head, arms, hands, legs, feet, and toes. It can scale hips translation for root motion and bake every frame or at a chosen interval. Facial animation, finger chains, IK controls, props, spring bones, and arbitrary custom control rigs are not mapped automatically yet.
+
+Version 0.12 includes 45 CC0 Quaternius Universal Animation Library clips from Defold's 3D Animations example. They appear automatically alongside the user's external motion folder; a personal clip with the same name and type takes precedence.
 
 The legacy surface fitting, rigging, skirt, and cuff tools remain under **Advanced / Legacy Tools**. Generating arbitrary new outfits from a text prompt is not included in this release.
 

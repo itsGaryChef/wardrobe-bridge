@@ -184,13 +184,24 @@ class WB_UL_motion_inventory(bpy.types.UIList):
 
 def refresh_motions(settings):
     prefs=library.preferences();value=prefs.motion_library_root if prefs and prefs.motion_library_root else settings.motion_library_dir
-    root=pathlib.Path(bpy.path.abspath(value)).resolve()
-    if not root.is_dir(): raise ValueError('Choose an existing pose / animation folder.')
+    roots=[]
+    if value:
+        root=pathlib.Path(bpy.path.abspath(value)).resolve()
+        if not root.is_dir(): raise ValueError('Choose an existing pose / animation folder.')
+        roots.append(root)
+    bundled=pathlib.Path(__file__).with_name('motions')
+    if bundled.is_dir():roots.append(bundled)
+    if not roots: raise ValueError('Choose an existing pose / animation folder.')
     settings.motion_inventory.clear()
-    for path in sorted((p for p in root.rglob('*') if p.is_file() and p.suffix.casefold() in {'.fbx','.bvh','.blend'}),key=lambda p:str(p).casefold()):
-        item=settings.motion_inventory.add();item.name=path.stem;item.filepath=str(path);item.format=path.suffix[1:].upper()
-        relative=path.relative_to(root);item.group=relative.parts[0] if len(relative.parts)>1 else item.format
-        item.motion_type='POSE' if any(part.casefold() in {'pose','poses'} for part in relative.parts[:-1]) else 'ANIMATION'
+    seen=set()
+    for root in roots:
+        for path in sorted((p for p in root.rglob('*') if p.is_file() and p.suffix.casefold() in {'.fbx','.bvh','.blend'}),key=lambda p:str(p).casefold()):
+            relative=path.relative_to(root);motion_type='POSE' if any(part.casefold() in {'pose','poses'} for part in relative.parts[:-1]) else 'ANIMATION'
+            identity=(motion_type,path.stem.casefold())
+            if identity in seen:continue
+            seen.add(identity)
+            item=settings.motion_inventory.add();item.name=path.stem;item.filepath=str(path);item.format=path.suffix[1:].upper()
+            item.group=relative.parts[0] if len(relative.parts)>1 else item.format;item.motion_type=motion_type
     settings.motion_inventory_index=min(settings.motion_inventory_index,max(0,len(settings.motion_inventory)-1))
     settings.motion_choice='0' if settings.motion_inventory else 'NONE'
     return len(settings.motion_inventory)
